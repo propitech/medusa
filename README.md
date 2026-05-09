@@ -17,6 +17,8 @@ medusa/
 │   └── ruby-rails/
 │       └── setup-and-install/
 │           └── action.yml                        # composite: ruby + pnpm + node
+├── scripts/
+│   └── bootstrap-rails.sh                        # one-shot consumer installer
 ├── templates/
 │   ├── common/
 │   │   ├── pull_request_template.md
@@ -30,6 +32,7 @@ medusa/
 │   ├── go/                                       # placeholder
 │   ├── rust/                                     # placeholder
 │   └── swift/                                    # placeholder
+├── agent-plans/                                  # design docs (committed)
 ├── .gitignore
 └── README.md
 ```
@@ -41,29 +44,17 @@ medusa/
 From the root of your consumer repo:
 
 ```bash
-mkdir -p .github/workflows
+# One-shot bootstrap (creates .github/ files; idempotent — re-run safe).
+bash <(curl -sSL https://raw.githubusercontent.com/propitech/medusa/v1/scripts/bootstrap-rails.sh)
 
-# 1. Caller workflow that delegates to medusa's reusable Ruby/Rails CI.
-curl -sSL https://raw.githubusercontent.com/propitech/medusa/v1/templates/ruby-rails/workflows/ci.yml \
-  -o .github/workflows/ci.yml
-
-# 2. Stale bot (optional but recommended).
-curl -sSL https://raw.githubusercontent.com/propitech/medusa/v1/templates/common/workflows/stale.yml \
-  -o .github/workflows/stale.yml
-
-# 3. Dependabot config (must live in your repo; not shareable).
-curl -sSL https://raw.githubusercontent.com/propitech/medusa/v1/templates/ruby-rails/dependabot.yml \
-  -o .github/dependabot.yml
-
-# 4. PR template + CODEOWNERS (auto-inherit only from a repo named `.github`,
-#    so for now copy them per project).
-curl -sSL https://raw.githubusercontent.com/propitech/medusa/v1/templates/common/pull_request_template.md \
-  -o .github/pull_request_template.md
-curl -sSL https://raw.githubusercontent.com/propitech/medusa/v1/templates/common/CODEOWNERS \
-  -o .github/CODEOWNERS
+# Then commit .github/ and set CODECOV_TOKEN under Settings → Secrets.
 ```
 
-Then **edit `.github/workflows/ci.yml`**: replace `propitech/REPLACE_ME` with `propitech/<your-repo>` (the codecov slug).
+The script fetches: `ci.yml`, `stale.yml`, `dependabot.yml`, `pull_request_template.md`, `CODEOWNERS`.
+
+Optional env vars: `FORCE=1` to overwrite, `DRY_RUN=1` to preview, `VERSION=<tag|branch>` to pin a non-`v1` ref, `TARGET=<dir>` to bootstrap into a directory other than `$PWD`.
+
+Zero edits required — `codecov-slug` defaults to your repo's `${{ github.repository }}` automatically.
 
 ### Required secrets in the consumer repo
 
@@ -84,10 +75,10 @@ Set these under **Settings → Secrets and variables → Actions**:
 
 | Workflow | Purpose | Required inputs | Optional inputs | Secrets |
 |----------|---------|-----------------|-----------------|---------|
-| `.github/workflows/ruby-rails-ci.yml` | Lint (rubocop, pnpm), scan (bundle-audit), test (postgres + rspec + codecov + qlty) | `codecov-slug` | `enable-postgres` (true), `enable-redis` (false; reserved), `enable-mysql` (false; reserved), `enable-frontend` (true), `test-command` (`bin/rails db:test:prepare spec`), `security-scan-command` (`bin/rails bundle:audit:update && bin/rails bundle:audit`) | `CODECOV_TOKEN` (req), `QLTY_COVERAGE_TOKEN` (opt) |
+| `.github/workflows/ruby-rails-ci.yml` | Lint (rubocop, pnpm), scan (bundle-audit), test (postgres + rspec + codecov + qlty) | *(none — all defaulted)* | `codecov-slug` (defaults to `${{ github.repository }}`), `enable-frontend` (true), `test-command` (`bin/rails db:test:prepare spec`), `security-scan-command` (`bin/rails bundle:audit:update && bin/rails bundle:audit`) | `CODECOV_TOKEN` (req), `QLTY_COVERAGE_TOKEN` (opt) |
 | `.github/workflows/stale.yml` | Close stale issues + PRs daily | — | `days-before-stale` (30), `days-before-close` (5), `exempt-pr-labels` (`dependencies`), `exempt-issue-labels` (`security,critical`), `exempt-milestones` (`future,alpha,beta`), `stale-issue-message` | — |
 
-> **Service-toggling caveat:** GitHub Actions cannot conditionally enable `services:`. v1 always starts a postgres container; the `enable-postgres`/`enable-redis`/`enable-mysql` inputs are accepted but currently no-ops. When a non-postgres Rails project arrives, this will be revisited (see Roadmap).
+> Postgres is always started as a service. Non-postgres Rails projects (MySQL, Redis-only, etc.) are not yet supported; see Roadmap.
 
 ## Available composite actions
 
@@ -125,13 +116,13 @@ See [`.github/CODEOWNERS`](.github/CODEOWNERS). `@propitech/dev` reviews everyth
 
 ## Roadmap
 
-See `agent-plans/extract-shared-ci.md` (local only — gitignored) and the project tracker for:
+See plans under `agent-plans/` and the project tracker for:
 
 - Tightened per-job permissions, `timeout-minutes`, Ruby/Node matrix
-- Conditional services for Rails projects on MySQL / Redis
+- Conditional services for Rails projects on MySQL / Redis (re-introduces `enable-mysql` / `enable-redis` inputs once implemented)
 - Coverage threshold gating, PR coverage comments
-- Separate `propitech/.github` repo for true org-default community files (PR template, CODEOWNERS, issue templates) without per-repo copy
+- **Create `propitech/.github` repo** for true auto-inherited community files (PR template, CODEOWNERS, issue templates). Removes the per-repo copy step for those files; cannot be done from `medusa` because GitHub only auto-inherits from a repo literally named `.github`.
 - Required workflows (Enterprise) to remove caller-file boilerplate
-- Go / Rust / Swift CI extractions
+- Go / Rust / Swift CI extractions (with per-language `bootstrap-<lang>.sh` scripts)
 - CodeQL workflow
 - Cache cleanup workflow

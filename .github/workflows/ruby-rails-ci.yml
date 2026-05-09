@@ -4,21 +4,10 @@ on:
   workflow_call:
     inputs:
       codecov-slug:
-        description: "org/repo slug passed to codecov-action (e.g. propitech/dance_school)."
+        description: "org/repo slug for codecov-action. Defaults to the calling repo's github.repository (e.g. propitech/dance_school). Override only for forks reporting under an upstream slug."
         type: string
-        required: true
-      enable-postgres:
-        description: "Reserved for future use. v1 always starts postgres."
-        type: boolean
-        default: true
-      enable-redis:
-        description: "Reserved for future use. v1 ignores this input."
-        type: boolean
-        default: false
-      enable-mysql:
-        description: "Reserved for future use. v1 ignores this input."
-        type: boolean
-        default: false
+        required: false
+        default: ${{ github.repository }}
       enable-frontend:
         description: "Toggle pnpm setup, frontend lint, and Node-related steps."
         type: boolean
@@ -124,7 +113,6 @@ jobs:
           files: ./coverage/coverage.xml,./coverage/coverage.json,./junit.xml
 
       - name: Upload result to Quality.sh
-        if: ${{ secrets.QLTY_COVERAGE_TOKEN != '' }}
         uses: qltysh/qlty-action/coverage@v2
         with:
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}

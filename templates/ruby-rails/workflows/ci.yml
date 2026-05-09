@@ -11,11 +11,6 @@ on:
 jobs:
   ci:
     uses: propitech/medusa/.github/workflows/ruby-rails-ci.yml@v1
-    with:
-      codecov-slug: propitech/REPLACE_ME      # <-- edit to match this repo
-      enable-frontend: true
-      # test-command: bin/rails db:test:prepare spec
-      # security-scan-command: bin/rails bundle:audit:update && bin/rails bundle:audit
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       QLTY_COVERAGE_TOKEN: ${{ secrets.QLTY_COVERAGE_TOKEN }}
