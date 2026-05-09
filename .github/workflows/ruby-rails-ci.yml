@@ -1,0 +1,131 @@
+name: Ruby on Rails CI (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      codecov-slug:
+        description: "org/repo slug passed to codecov-action (e.g. propitech/dance_school)."
+        type: string
+        required: true
+      enable-postgres:
+        description: "Reserved for future use. v1 always starts postgres."
+        type: boolean
+        default: true
+      enable-redis:
+        description: "Reserved for future use. v1 ignores this input."
+        type: boolean
+        default: false
+      enable-mysql:
+        description: "Reserved for future use. v1 ignores this input."
+        type: boolean
+        default: false
+      enable-frontend:
+        description: "Toggle pnpm setup, frontend lint, and Node-related steps."
+        type: boolean
+        default: true
+      test-command:
+        description: "Command to run the test suite."
+        type: string
+        default: "bin/rails db:test:prepare spec"
+      security-scan-command:
+        description: "Command to run the dependency security scan."
+        type: string
+        default: "bin/rails bundle:audit:update && bin/rails bundle:audit"
+    secrets:
+      CODECOV_TOKEN:
+        required: true
+      QLTY_COVERAGE_TOKEN:
+        required: false
+
+permissions:
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  scan_ruby:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v1
+        with:
+          install_node: "false"
+
+      - name: Scan Ruby dependencies for vulnerabilities
+        run: ${{ inputs.security-scan-command }}
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v1
+        with:
+          install_node: ${{ inputs.enable-frontend && 'true' || 'false' }}
+
+      - name: Lint Ruby code for consistent style
+        run: bundle exec rubocop
+
+      - name: Lint front-end code for consistent style
+        if: ${{ inputs.enable-frontend }}
+        run: pnpm lint
+
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v1
+        with:
+          install_node: ${{ inputs.enable-frontend && 'true' || 'false' }}
+
+      - name: Run tests
+        env:
+          CI: true
+          RAILS_ENV: test
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432
+        run: ${{ inputs.test-command }}
+
+      - name: Keep screenshots and logs from failed system tests
+        uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: screenshots-and-logs
+          path: |
+            ${{ github.workspace }}/tmp/capybara
+            ${{ github.workspace }}/log
+          if-no-files-found: ignore
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v6
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: ${{ inputs.codecov-slug }}
+          verbose: true
+          fail_ci_if_error: true
+          files: ./coverage/coverage.xml,./coverage/coverage.json,./junit.xml
+
+      - name: Upload result to Quality.sh
+        if: ${{ secrets.QLTY_COVERAGE_TOKEN != '' }}
+        uses: qltysh/qlty-action/coverage@v2
+        with:
+          token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
+          files: coverage/.resultset.json
