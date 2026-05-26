@@ -21,7 +21,7 @@ on:
         type: string
         default: "bin/rails bundle:audit:update && bin/rails bundle:audit"
       runs_on:
-        description: 'JSON-encoded runs-on value. Pass a quoted string for a single label (e.g. ''"ubuntu-latest"'') or a JSON array for label sets (e.g. ''["self-hosted","hetzner","rails-8.1"]''). Empty falls back to ubuntu-latest. Typical use: `runs_on: ${{ vars.RUNNER_LABELS }}` with the variable set per repo.'
+        description: "JSON-encoded runs-on value. Pass a quoted string for a single label (e.g. '\"ubuntu-latest\"') or a JSON array for label sets (e.g. '[\"self-hosted\",\"hetzner\",\"rails-8.1\"]'). Empty default falls back to ubuntu-latest. Typical use: set repo Actions variable RUNNER_LABELS to the JSON array and pass the variable into this input via a workflow expression."
         type: string
         required: false
         default: ''
