@@ -12,33 +12,51 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Install packages
-      # Skip on self-hosted: our runner image bakes in chrome/chromium, libvips,
-      # libjemalloc2, postgresql-client, libpq-dev. Self-hosted containers also
-      # run without sudo + with --security-opt no-new-privileges, so this step
-      # would fail anyway.
+    # ---- GitHub-hosted path ----
+    - name: Install packages (GitHub-hosted)
       if: ${{ runner.environment != 'self-hosted' }}
       shell: bash
       run: sudo apt-get update && sudo apt-get install --no-install-recommends -y google-chrome-stable curl libjemalloc2 libvips postgresql-client libpq-dev
 
-    - name: Set up Ruby
+    - name: Set up Ruby (GitHub-hosted)
       uses: ruby/setup-ruby@v1
-      if: ${{ inputs.install_ruby == 'true' }}
+      if: ${{ runner.environment != 'self-hosted' && inputs.install_ruby == 'true' }}
       with:
         ruby-version: mise.toml
         bundler-cache: true
 
-    - name: Install pnpm
+    - name: Install pnpm (GitHub-hosted)
       uses: pnpm/action-setup@v4
-      if: ${{ inputs.install_node == 'true' }}
+      if: ${{ runner.environment != 'self-hosted' && inputs.install_node == 'true' }}
 
     - uses: actions/setup-node@v6
-      if: ${{ inputs.install_node == 'true' }}
+      if: ${{ runner.environment != 'self-hosted' && inputs.install_node == 'true' }}
       with:
         node-version: "20"
         cache: pnpm
 
-    - name: Install modules
-      if: ${{ inputs.install_node == 'true' }}
+    - name: Install modules (GitHub-hosted)
+      if: ${{ runner.environment != 'self-hosted' && inputs.install_node == 'true' }}
       shell: bash
       run: pnpm install --frozen-lockfile
+
+    # ---- Self-hosted path ----
+    # On Hetzner self-hosted: image bakes ruby, node, pnpm, system deps.
+    # ruby/setup-ruby refuses non-GitHub-hosted base images. Use baked
+    # toolchain + bundle install directly. pnpm install runs the same.
+    - name: Bundle install (self-hosted)
+      if: ${{ runner.environment == 'self-hosted' && inputs.install_ruby == 'true' }}
+      shell: bash
+      run: |
+        ruby --version
+        gem install --no-document bundler --conservative
+        bundle config set --local path "vendor/bundle"
+        bundle install --jobs 4 --retry 3
+
+    - name: pnpm install (self-hosted)
+      if: ${{ runner.environment == 'self-hosted' && inputs.install_node == 'true' }}
+      shell: bash
+      run: |
+        node --version
+        pnpm --version
+        pnpm install --frozen-lockfile
