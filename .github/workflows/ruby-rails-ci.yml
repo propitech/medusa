@@ -20,6 +20,11 @@ on:
         description: "Command to run the dependency security scan."
         type: string
         default: "bin/rails bundle:audit:update && bin/rails bundle:audit"
+      runs_on:
+        description: "JSON-encoded runs-on value. Pass a quoted string for a single label (e.g. '\"ubuntu-latest\"') or a JSON array for label sets (e.g. '[\"self-hosted\",\"hetzner\",\"rails-8.1\"]'). Empty default falls back to ubuntu-latest. Typical use: set repo Actions variable RUNNER_LABELS to the JSON array and pass the variable into this input via a workflow expression."
+        type: string
+        required: false
+        default: ''
     secrets:
       CODECOV_TOKEN:
         required: true
@@ -36,7 +41,7 @@ concurrency:
 
 jobs:
   scan_ruby:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -49,7 +54,7 @@ jobs:
         run: ${{ inputs.security-scan-command }}
 
   lint:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -66,7 +71,7 @@ jobs:
         run: pnpm lint
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest' }}
 
     services:
       postgres:

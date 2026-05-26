@@ -75,7 +75,7 @@ Set these under **Settings → Secrets and variables → Actions**:
 
 | Workflow | Purpose | Required inputs | Optional inputs | Secrets |
 |----------|---------|-----------------|-----------------|---------|
-| `.github/workflows/ruby-rails-ci.yml` | Lint (rubocop, pnpm), scan (bundle-audit), test (postgres + rspec + codecov + qlty) | *(none — all defaulted)* | `codecov-slug` (defaults to `${{ github.repository }}`), `enable-frontend` (true), `test-command` (`bin/rails db:test:prepare spec`), `security-scan-command` (`bin/rails bundle:audit:update && bin/rails bundle:audit`) | `CODECOV_TOKEN` (req), `QLTY_COVERAGE_TOKEN` (opt) |
+| `.github/workflows/ruby-rails-ci.yml` | Lint (rubocop, pnpm), scan (bundle-audit), test (postgres + rspec + codecov + qlty) | *(none — all defaulted)* | `codecov-slug` (defaults to `${{ github.repository }}`), `enable-frontend` (true), `test-command` (`bin/rails db:test:prepare spec`), `security-scan-command` (`bin/rails bundle:audit:update && bin/rails bundle:audit`), `runs_on` (JSON-encoded label, empty → `ubuntu-latest`; pass `${{ vars.RUNNER_LABELS }}` to route to self-hosted) | `CODECOV_TOKEN` (req), `QLTY_COVERAGE_TOKEN` (opt) |
 | `.github/workflows/stale.yml` | Close stale issues + PRs daily | — | `days-before-stale` (30), `days-before-close` (5), `exempt-pr-labels` (`dependencies`), `exempt-issue-labels` (`security,critical`), `exempt-milestones` (`future,alpha,beta`), `stale-issue-message` | — |
 
 > Postgres is always started as a service. Non-postgres Rails projects (MySQL, Redis-only, etc.) are not yet supported; see Roadmap.
