@@ -46,7 +46,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v1
+      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v2
         with:
           install_node: "false"
 
@@ -59,7 +59,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v1
+      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v2
         with:
           install_node: ${{ inputs.enable-frontend && 'true' || 'false' }}
 
@@ -87,7 +87,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v1
+      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v2
         with:
           install_node: ${{ inputs.enable-frontend && 'true' || 'false' }}
 
