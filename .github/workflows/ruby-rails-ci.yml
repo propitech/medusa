@@ -37,16 +37,20 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Only cancel superseded runs on PRs; pushes to default branch may drive
+  # deploys downstream and should not be auto-cancelled by rebases.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   scan_ruby:
-    runs-on: ${{ inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest' }}
+    # Dependabot PRs forced to GitHub-hosted: avoid running unaudited
+    # transitive dependency code on the shared self-hosted VM.
+    runs-on: ${{ github.actor == 'dependabot[bot]' && 'ubuntu-latest' || (inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v2
+      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v3
         with:
           install_node: "false"
 
@@ -54,12 +58,14 @@ jobs:
         run: ${{ inputs.security-scan-command }}
 
   lint:
-    runs-on: ${{ inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest' }}
+    # Dependabot PRs forced to GitHub-hosted: avoid running unaudited
+    # transitive dependency code on the shared self-hosted VM.
+    runs-on: ${{ github.actor == 'dependabot[bot]' && 'ubuntu-latest' || (inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v2
+      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v3
         with:
           install_node: ${{ inputs.enable-frontend && 'true' || 'false' }}
 
@@ -71,7 +77,9 @@ jobs:
         run: pnpm lint
 
   test:
-    runs-on: ${{ inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest' }}
+    # Dependabot PRs forced to GitHub-hosted: avoid running unaudited
+    # transitive dependency code on the shared self-hosted VM.
+    runs-on: ${{ github.actor == 'dependabot[bot]' && 'ubuntu-latest' || (inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest') }}
 
     services:
       postgres:
@@ -87,7 +95,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v2
+      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v3
         with:
           install_node: ${{ inputs.enable-frontend && 'true' || 'false' }}
 
