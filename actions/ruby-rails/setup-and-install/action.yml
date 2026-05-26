@@ -13,6 +13,11 @@ runs:
   using: composite
   steps:
     - name: Install packages
+      # Skip on self-hosted: our runner image bakes in chrome/chromium, libvips,
+      # libjemalloc2, postgresql-client, libpq-dev. Self-hosted containers also
+      # run without sudo + with --security-opt no-new-privileges, so this step
+      # would fail anyway.
+      if: ${{ runner.environment != 'self-hosted' }}
       shell: bash
       run: sudo apt-get update && sudo apt-get install --no-install-recommends -y google-chrome-stable curl libjemalloc2 libvips postgresql-client libpq-dev
 
