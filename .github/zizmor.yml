@@ -1,0 +1,15 @@
+rules:
+  # Same-org composite action — consumers track the moving @vN tag for
+  # auto-fix delivery, so blanket SHA-pinning on internal refs would
+  # defeat the versioning policy.
+  unpinned-uses:
+    config:
+      policies:
+        propitech/medusa/*: ref-pin
+
+  # The `container-image` input default is itself a digest-pinned ghcr
+  # reference; zizmor flags the `${{ inputs.container-image }}`
+  # expression without seeing through it. Suppress on the file.
+  unpinned-images:
+    ignore:
+      - ruby-rails-ci.yml
