@@ -8,10 +8,8 @@ rules:
         propitech/medusa/*: ref-pin
 
   # The `container-image` input default is itself a digest-pinned ghcr
-  # reference; zizmor flags the expression `${{ inputs.container-image }}`
-  # without seeing through it. Drop the rule because the data flow is
-  # safe by construction.
+  # reference; zizmor flags the `${{ inputs.container-image }}`
+  # expression without seeing through it. Suppress on the file.
   unpinned-images:
-    config:
-      ignore:
-        - ruby-rails-ci.yml
+    ignore:
+      - ruby-rails-ci.yml
