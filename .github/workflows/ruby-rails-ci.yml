@@ -38,13 +38,9 @@ on:
         description: "Quality.sh coverage upload token. When unset, the upload step is skipped."
         required: false
 
-# `packages: read` lets the workflow `GITHUB_TOKEN` pull the container image
-# from GHCR when the package is org-private. Harmless when the package is
-# public.
 permissions:
   contents: read
   pull-requests: read
-  packages: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -63,9 +59,6 @@ jobs:
     runs-on: ${{ (github.actor == 'dependabot[bot]' && github.event.repository.private != true) && 'ubuntu-latest' || (inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest') }}
     container:
       image: ${{ inputs.container-image }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -88,9 +81,6 @@ jobs:
     runs-on: ${{ (github.actor == 'dependabot[bot]' && github.event.repository.private != true) && 'ubuntu-latest' || (inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest') }}
     container:
       image: ${{ inputs.container-image }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -121,9 +111,6 @@ jobs:
     # under Path Y the job container needs it directly.
     container:
       image: ${{ inputs.container-image }}
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
       options: --shm-size=2g
 
     services:
