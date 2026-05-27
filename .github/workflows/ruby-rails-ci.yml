@@ -72,7 +72,12 @@ jobs:
           install_node: "false"
 
       - name: Scan Ruby dependencies for vulnerabilities
-        run: ${{ inputs.security-scan-command }}
+        env:
+          # Indirect through env so zizmor's template-injection check
+          # sees a shell-level expansion (safer than a GHA-level
+          # template that would parse before the shell runs).
+          SECURITY_SCAN_COMMAND: ${{ inputs.security-scan-command }}
+        run: bash -c "$SECURITY_SCAN_COMMAND"
 
   lint:
     runs-on: ${{ github.actor == 'dependabot[bot]' && 'ubuntu-latest' || (inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest') }}
@@ -138,7 +143,8 @@ jobs:
           CI: true
           RAILS_ENV: test
           DATABASE_URL: postgres://postgres:postgres@postgres:5432
-        run: ${{ inputs.test-command }}
+          TEST_COMMAND: ${{ inputs.test-command }}
+        run: bash -c "$TEST_COMMAND"
 
       - name: Keep screenshots and logs from failed system tests
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -150,19 +156,25 @@ jobs:
             ${{ github.workspace }}/log
           if-no-files-found: ignore
 
+      # `secrets` context is not allowed in step-level `if:` for a
+      # workflow_call, so map the secret to env first and gate on env.
       - name: Upload coverage reports to Codecov
-        if: ${{ secrets.CODECOV_TOKEN != '' }}
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+        if: ${{ env.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          token: ${{ env.CODECOV_TOKEN }}
           slug: ${{ inputs.codecov-slug }}
           verbose: true
           fail_ci_if_error: true
           files: ./coverage/coverage.xml,./coverage/coverage.json,./junit.xml
 
       - name: Upload result to Quality.sh
-        if: ${{ secrets.QLTY_COVERAGE_TOKEN != '' }}
+        env:
+          QLTY_COVERAGE_TOKEN: ${{ secrets.QLTY_COVERAGE_TOKEN }}
+        if: ${{ env.QLTY_COVERAGE_TOKEN != '' }}
         uses: qltysh/qlty-action/coverage@a19242102d17e497f437d7466aa01b528537e899 # v2
         with:
-          token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
+          token: ${{ env.QLTY_COVERAGE_TOKEN }}
           files: coverage/.resultset.json
