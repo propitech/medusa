@@ -100,11 +100,17 @@ jobs:
     # bridge network; services are reachable via their service name (here:
     # `postgres`), not localhost. No host port is published, so multiple
     # concurrent jobs on one self-hosted VM no longer collide on 5432.
+    #
+    # `--shm-size=2g`: default 64M /dev/shm crashes headless Chromium under
+    # Selenium system tests with "DevToolsActivePort file doesn't exist".
+    # The previous supervisor wrapper set this on the runner agent container;
+    # under Path Y the job container needs it directly.
     container:
       image: ${{ inputs.container-image }}
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+      options: --shm-size=2g
 
     services:
       postgres:
