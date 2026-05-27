@@ -32,8 +32,10 @@ on:
         default: 'ghcr.io/propitech/runner-rails-8.1:latest'
     secrets:
       CODECOV_TOKEN:
-        required: true
+        description: "Codecov upload token. When unset, the upload step is skipped."
+        required: false
       QLTY_COVERAGE_TOKEN:
+        description: "Quality.sh coverage upload token. When unset, the upload step is skipped."
         required: false
 
 # `packages: read` lets the workflow `GITHUB_TOKEN` pull the container image
@@ -146,6 +148,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload coverage reports to Codecov
+        if: ${{ secrets.CODECOV_TOKEN != '' }}
         uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -155,6 +158,7 @@ jobs:
           files: ./coverage/coverage.xml,./coverage/coverage.json,./junit.xml
 
       - name: Upload result to Quality.sh
+        if: ${{ secrets.QLTY_COVERAGE_TOKEN != '' }}
         uses: qltysh/qlty-action/coverage@v2
         with:
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
