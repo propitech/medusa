@@ -26,10 +26,10 @@ on:
         required: false
         default: ''
       container-image:
-        description: "Container image used for every job (Ruby + Node + pnpm + system deps baked). Drives both GitHub-hosted and self-hosted runs through the same toolchain."
+        description: "Container image used for every job (Ruby + Node + pnpm + system deps baked). Drives both GitHub-hosted and self-hosted runs through the same toolchain. Pinned by digest for reproducibility; bump in lockstep with the runner-image rebuild."
         type: string
         required: false
-        default: 'ghcr.io/propitech/runner-rails-8.1:latest'
+        default: 'ghcr.io/propitech/runner-rails-8.1@sha256:b0e99b401c057b072268be176dac28a8c46d78dc0099a7b3efbeb32324bf6f80'
     secrets:
       CODECOV_TOKEN:
         description: "Codecov upload token. When unset, the upload step is skipped."
@@ -65,7 +65,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v4
         with:
@@ -83,7 +83,7 @@ jobs:
         password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v4
         with:
@@ -116,7 +116,10 @@ jobs:
 
     services:
       postgres:
-        image: postgres
+        # postgres:17-alpine pinned by digest. Bump alongside the
+        # postgres-client major shipped in the runner image. Renovate /
+        # dependabot can be wired to track docker tags later.
+        image: postgres@sha256:979c4379dd698aba0b890599a6104e082035f98ef31d9b9291ec22f2b13059ca
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -124,7 +127,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v4
         with:
@@ -138,7 +141,7 @@ jobs:
         run: ${{ inputs.test-command }}
 
       - name: Keep screenshots and logs from failed system tests
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         if: failure()
         with:
           name: screenshots-and-logs
@@ -149,7 +152,7 @@ jobs:
 
       - name: Upload coverage reports to Codecov
         if: ${{ secrets.CODECOV_TOKEN != '' }}
-        uses: codecov/codecov-action@v6
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: ${{ inputs.codecov-slug }}
@@ -159,7 +162,7 @@ jobs:
 
       - name: Upload result to Quality.sh
         if: ${{ secrets.QLTY_COVERAGE_TOKEN != '' }}
-        uses: qltysh/qlty-action/coverage@v2
+        uses: qltysh/qlty-action/coverage@a19242102d17e497f437d7466aa01b528537e899 # v2
         with:
           token: ${{ secrets.QLTY_COVERAGE_TOKEN }}
           files: coverage/.resultset.json
