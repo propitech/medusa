@@ -2,17 +2,17 @@
 # Bootstrap propitech Rails CI in the current (or specified) consumer repo.
 #
 # Usage:
-#   bash <(curl -sSL https://raw.githubusercontent.com/propitech/medusa/v1/scripts/bootstrap-rails.sh)
+#   bash <(curl -sSL https://raw.githubusercontent.com/propitech/medusa/v4/scripts/bootstrap-rails.sh)
 #
 # Options (env vars):
-#   VERSION    medusa tag/branch to fetch from (default: v1)
+#   VERSION    medusa tag/branch to fetch from (default: v4)
 #   TARGET     target repo root (default: current directory)
 #   FORCE=1    overwrite existing files
 #   DRY_RUN=1  show what would be fetched without writing
 
 set -euo pipefail
 
-VERSION="${VERSION:-v1}"
+VERSION="${VERSION:-v4}"
 TARGET="${TARGET:-.}"
 FORCE="${FORCE:-0}"
 DRY_RUN="${DRY_RUN:-0}"

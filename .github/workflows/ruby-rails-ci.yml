@@ -25,15 +25,24 @@ on:
         type: string
         required: false
         default: ''
+      container-image:
+        description: "Container image used for every job (Ruby + Node + pnpm + system deps baked). Drives both GitHub-hosted and self-hosted runs through the same toolchain."
+        type: string
+        required: false
+        default: 'ghcr.io/propitech/runner-rails-8.1:latest'
     secrets:
       CODECOV_TOKEN:
         required: true
       QLTY_COVERAGE_TOKEN:
         required: false
 
+# `packages: read` lets the workflow `GITHUB_TOKEN` pull the container image
+# from GHCR when the package is org-private. Harmless when the package is
+# public.
 permissions:
   contents: read
   pull-requests: read
+  packages: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -44,13 +53,19 @@ concurrency:
 jobs:
   scan_ruby:
     # Dependabot PRs forced to GitHub-hosted: avoid running unaudited
-    # transitive dependency code on the shared self-hosted VM.
+    # transitive dependency code on the shared self-hosted VM. The
+    # container image is the same either way.
     runs-on: ${{ github.actor == 'dependabot[bot]' && 'ubuntu-latest' || (inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest') }}
+    container:
+      image: ${{ inputs.container-image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v3
+      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v4
         with:
           install_node: "false"
 
@@ -58,14 +73,17 @@ jobs:
         run: ${{ inputs.security-scan-command }}
 
   lint:
-    # Dependabot PRs forced to GitHub-hosted: avoid running unaudited
-    # transitive dependency code on the shared self-hosted VM.
     runs-on: ${{ github.actor == 'dependabot[bot]' && 'ubuntu-latest' || (inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest') }}
+    container:
+      image: ${{ inputs.container-image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v3
+      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v4
         with:
           install_node: ${{ inputs.enable-frontend && 'true' || 'false' }}
 
@@ -77,9 +95,22 @@ jobs:
         run: pnpm lint
 
   test:
-    # Dependabot PRs forced to GitHub-hosted: avoid running unaudited
-    # transitive dependency code on the shared self-hosted VM.
     runs-on: ${{ github.actor == 'dependabot[bot]' && 'ubuntu-latest' || (inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest') }}
+    # All jobs run inside the propitech runner image. GHA creates a per-job
+    # bridge network; services are reachable via their service name (here:
+    # `postgres`), not localhost. No host port is published, so multiple
+    # concurrent jobs on one self-hosted VM no longer collide on 5432.
+    #
+    # `--shm-size=2g`: default 64M /dev/shm crashes headless Chromium under
+    # Selenium system tests with "DevToolsActivePort file doesn't exist".
+    # The previous supervisor wrapper set this on the runner agent container;
+    # under Path Y the job container needs it directly.
+    container:
+      image: ${{ inputs.container-image }}
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+      options: --shm-size=2g
 
     services:
       postgres:
@@ -87,15 +118,13 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
         options: --health-cmd="pg_isready" --health-interval=10s --health-timeout=5s --health-retries=3
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v3
+      - uses: propitech/medusa/actions/ruby-rails/setup-and-install@v4
         with:
           install_node: ${{ inputs.enable-frontend && 'true' || 'false' }}
 
@@ -103,7 +132,7 @@ jobs:
         env:
           CI: true
           RAILS_ENV: test
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432
+          DATABASE_URL: postgres://postgres:postgres@postgres:5432
         run: ${{ inputs.test-command }}
 
       - name: Keep screenshots and logs from failed system tests

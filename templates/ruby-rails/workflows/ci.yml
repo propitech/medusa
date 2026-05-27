@@ -10,7 +10,7 @@ on:
 
 jobs:
   ci:
-    uses: propitech/medusa/.github/workflows/ruby-rails-ci.yml@v1
+    uses: propitech/medusa/.github/workflows/ruby-rails-ci.yml@v4
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
       QLTY_COVERAGE_TOKEN: ${{ secrets.QLTY_COVERAGE_TOKEN }}
