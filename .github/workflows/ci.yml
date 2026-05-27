@@ -5,6 +5,11 @@ name: medusa CI
 #   actionlint  — GHA workflow + composite action syntax
 #   zizmor      — security smells (unpinned refs, broad perms, etc)
 #   shellcheck  — bootstrap script
+#
+# Each job always starts (so the required status check reports back),
+# but the heavy lint step is skipped when only docs / markdown changed.
+# Achieved with `dorny/paths-filter` deriving an output that gates the
+# subsequent step.
 
 "on":
   pull_request:
@@ -26,9 +31,20 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
-      - uses: raven-actions/actionlint@205b530c5d9fa8f44ae9ed59f341a0db994aa6f8 # v2.1.2
+      - id: changed
+        uses: dorny/paths-filter@6852f92c20ea7fd3b0c25de3b5112db3a98da050 # v3
+        with:
+          filters: |
+            ci:
+              - '.github/workflows/**'
+              - 'actions/**'
+              - '.github/zizmor.yml'
+      - if: steps.changed.outputs.ci == 'true'
+        uses: raven-actions/actionlint@205b530c5d9fa8f44ae9ed59f341a0db994aa6f8 # v2.1.2
         with:
           fail-on-error: true
+      - if: steps.changed.outputs.ci != 'true'
+        run: echo "No CI-relevant paths changed; actionlint skipped."
 
   zizmor:
     runs-on: ubuntu-latest
@@ -39,8 +55,20 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
-      - uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
-      - run: uvx zizmor --persona=regular --format=plain .github/workflows actions
+      - id: changed
+        uses: dorny/paths-filter@6852f92c20ea7fd3b0c25de3b5112db3a98da050 # v3
+        with:
+          filters: |
+            ci:
+              - '.github/workflows/**'
+              - 'actions/**'
+              - '.github/zizmor.yml'
+      - if: steps.changed.outputs.ci == 'true'
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      - if: steps.changed.outputs.ci == 'true'
+        run: uvx zizmor --persona=regular --format=plain .github/workflows actions
+      - if: steps.changed.outputs.ci != 'true'
+        run: echo "No CI-relevant paths changed; zizmor skipped."
 
   shellcheck:
     runs-on: ubuntu-latest
@@ -48,4 +76,13 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           persist-credentials: false
-      - run: shellcheck scripts/*.sh
+      - id: changed
+        uses: dorny/paths-filter@6852f92c20ea7fd3b0c25de3b5112db3a98da050 # v3
+        with:
+          filters: |
+            scripts:
+              - 'scripts/**'
+      - if: steps.changed.outputs.scripts == 'true'
+        run: shellcheck scripts/*.sh
+      - if: steps.changed.outputs.scripts != 'true'
+        run: echo "No scripts changed; shellcheck skipped."
