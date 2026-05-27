@@ -56,14 +56,16 @@ Optional env vars: `FORCE=1` to overwrite, `DRY_RUN=1` to preview, `VERSION=<tag
 
 Zero edits required — `codecov-slug` defaults to your repo's `${{ github.repository }}` automatically.
 
-### Required secrets in the consumer repo
+### Optional secrets in the consumer repo
 
-Set these under **Settings → Secrets and variables → Actions**:
+Both coverage uploads are skipped silently when their secret is not set, so consumers that don't (yet) wire Codecov or Quality.sh can adopt the workflow without first provisioning tokens.
 
-| Secret | Required | Purpose |
-|--------|----------|---------|
-| `CODECOV_TOKEN` | yes | Upload coverage to Codecov |
-| `QLTY_COVERAGE_TOKEN` | no | Upload coverage to Quality.sh; step skips silently when unset |
+Set these under **Settings → Secrets and variables → Actions** when you want the uploads:
+
+| Secret | Purpose |
+|--------|---------|
+| `CODECOV_TOKEN` | Upload coverage to Codecov; step skipped when unset |
+| `QLTY_COVERAGE_TOKEN` | Upload coverage to Quality.sh; step skipped when unset |
 
 ### Versioning
 
@@ -75,7 +77,7 @@ Set these under **Settings → Secrets and variables → Actions**:
 
 | Workflow | Purpose | Required inputs | Optional inputs | Secrets |
 |----------|---------|-----------------|-----------------|---------|
-| `.github/workflows/ruby-rails-ci.yml` | Lint (rubocop, pnpm), scan (bundle-audit), test (postgres + rspec + codecov + qlty) | *(none — all defaulted)* | `codecov-slug` (defaults to `${{ github.repository }}`), `enable-frontend` (true), `test-command` (`bin/rails db:test:prepare spec`), `security-scan-command` (`bin/rails bundle:audit:update && bin/rails bundle:audit`), `runs_on` (JSON-encoded label, empty → `ubuntu-latest`; pass `${{ vars.RUNNER_LABELS }}` to route to self-hosted), `container-image` (default `ghcr.io/propitech/runner-rails-8.1:latest`) | `CODECOV_TOKEN` (req), `QLTY_COVERAGE_TOKEN` (opt) |
+| `.github/workflows/ruby-rails-ci.yml` | Lint (rubocop, pnpm), scan (bundle-audit), test (postgres + rspec + codecov + qlty) | *(none — all defaulted)* | `codecov-slug` (defaults to `${{ github.repository }}`), `enable-frontend` (true), `test-command` (`bin/rails db:test:prepare spec`), `security-scan-command` (`bin/rails bundle:audit:update && bin/rails bundle:audit`), `runs_on` (JSON-encoded label, empty → `ubuntu-latest`; pass `${{ vars.RUNNER_LABELS }}` to route to self-hosted), `container-image` (default `ghcr.io/propitech/runner-rails-8.1:latest`) | `CODECOV_TOKEN` (opt — step skipped when unset), `QLTY_COVERAGE_TOKEN` (opt — step skipped when unset) |
 | `.github/workflows/stale.yml` | Close stale issues + PRs daily | — | `days-before-stale` (30), `days-before-close` (5), `exempt-pr-labels` (`dependencies`), `exempt-issue-labels` (`security,critical`), `exempt-milestones` (`future,alpha,beta`), `stale-issue-message` | — |
 
 > Postgres is always started as a service. Non-postgres Rails projects (MySQL, Redis-only, etc.) are not yet supported; see Roadmap.
