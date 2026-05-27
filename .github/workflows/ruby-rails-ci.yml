@@ -54,10 +54,13 @@ concurrency:
 
 jobs:
   scan_ruby:
-    # Dependabot PRs forced to GitHub-hosted: avoid running unaudited
-    # transitive dependency code on the shared self-hosted VM. The
-    # container image is the same either way.
-    runs-on: ${{ github.actor == 'dependabot[bot]' && 'ubuntu-latest' || (inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest') }}
+    # Dependabot PRs only get forced onto GitHub-hosted runners for
+    # PUBLIC repos — there a fork or hijacked dep could exfiltrate
+    # via the shared self-hosted VM. On private repos the threat
+    # surface is contained to org-write contributors, so dependabot
+    # runs on the same self-hosted route as humans. The container
+    # image is the same either way.
+    runs-on: ${{ (github.actor == 'dependabot[bot]' && github.event.repository.private != true) && 'ubuntu-latest' || (inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest') }}
     container:
       image: ${{ inputs.container-image }}
       credentials:
@@ -82,7 +85,7 @@ jobs:
         run: bash -c "$SECURITY_SCAN_COMMAND"
 
   lint:
-    runs-on: ${{ github.actor == 'dependabot[bot]' && 'ubuntu-latest' || (inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest') }}
+    runs-on: ${{ (github.actor == 'dependabot[bot]' && github.event.repository.private != true) && 'ubuntu-latest' || (inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest') }}
     container:
       image: ${{ inputs.container-image }}
       credentials:
@@ -106,7 +109,7 @@ jobs:
         run: pnpm lint
 
   test:
-    runs-on: ${{ github.actor == 'dependabot[bot]' && 'ubuntu-latest' || (inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest') }}
+    runs-on: ${{ (github.actor == 'dependabot[bot]' && github.event.repository.private != true) && 'ubuntu-latest' || (inputs.runs_on != '' && fromJSON(inputs.runs_on) || 'ubuntu-latest') }}
     # All jobs run inside the propitech runner image. GHA creates a per-job
     # bridge network; services are reachable via their service name (here:
     # `postgres`), not localhost. No host port is published, so multiple
